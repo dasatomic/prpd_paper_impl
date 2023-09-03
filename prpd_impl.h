@@ -9,53 +9,64 @@ using namespace std;
 
 class Table {
 public:
-    string partitioned_column_name;
-    vector<int> partitioned_column;
-    string non_partitioned_column_name;
-    vector<int> non_partitioned_column;
+    // string partitioned_column_name;
+    // vector<int> partitioned_column;
+    // string non_partitioned_column_name;
+    // vector<int> non_partitioned_column;
 
-    Table() = default;
+    vector<string> column_names;
+    vector<vector<int>> columns; // column ordering.
 
-    Table(string partitioned_column_name, string non_partitioned_column_name,
-          vector<int> partitioned_column, vector<int> non_partitioned_column)
-        : partitioned_column_name(partitioned_column_name), non_partitioned_column_name(non_partitioned_column_name),
-        partitioned_column(partitioned_column), non_partitioned_column(non_partitioned_column)
+    Table(const vector<string>& column_names, const vector<vector<int>>& columns)
     {
+        assert(column_names.size() == columns.size());
+        this->column_names = column_names;
+        this->columns = columns;
     }
 
     const vector<int>& get_column(const string& name) const
     {
-        if (name == partitioned_column_name)
-            return partitioned_column;
-        else if (name == non_partitioned_column_name)
-            return non_partitioned_column;
-        else
-            assert(false);
-    }
-
-    const vector<string> get_column_names() const
-    {
-        return { partitioned_column_name, non_partitioned_column_name };
+        auto it = find(column_names.begin(), column_names.end(), name);
+        assert(it != column_names.end());
+        return columns[it - column_names.begin()];
     }
 
     bool operator==(const Table& other) const
     {
-        auto column1My = this->get_column(this->partitioned_column_name);
-        auto column2My = this->get_column(this->non_partitioned_column_name);
-        auto column1Other = other.get_column(this->partitioned_column_name);
-        auto column2Other = other.get_column(this->non_partitioned_column_name);
+        int num_rows = columns[0].size();
 
-        vector<int> column1MySorted(column1My.size());
-        vector<int> column2MySorted(column2My.size());
-        vector<int> column1OtherSorted(column1Other.size());
-        vector<int> column2OtherSorted(column2Other.size());
+        if (num_rows != other.columns[0].size())
+            return false;
 
-        partial_sort_copy(column1My.begin(), column1My.end(), column1MySorted.begin(), column1MySorted.end());
-        partial_sort_copy(column2My.begin(), column2My.end(), column2MySorted.begin(), column2MySorted.end());
-        partial_sort_copy(column1Other.begin(), column1Other.end(), column1OtherSorted.begin(), column1OtherSorted.end());
-        partial_sort_copy(column2Other.begin(), column2Other.end(), column2OtherSorted.begin(), column2OtherSorted.end());
+        // find matching row for every row in this table.
+        // todo: this is not proper eq check...
+        for (int idx_row = 0; idx_row < num_rows; idx_row++)
+        {
+            bool found_row_other = false;
+            for (int idx_row_other = 0; idx_row_other < num_rows; idx_row_other++)
+            {
+                bool row_eq = true;
+                for (int idx_col = 0; idx_col < column_names.size(); idx_col++)
+                {
+                    if (columns[idx_col][idx_row] != other.columns[idx_col][idx_row])
+                    {
+                        row_eq = false;
+                        break;
+                    }
+                }
 
-        return column1MySorted == column1OtherSorted && column2MySorted == column2OtherSorted;
+                if (row_eq)
+                {
+                    found_row_other = true;
+                    break;
+                }
+            }
+
+            if (!found_row_other)
+                return false;
+        }
+
+        return true;
     }
 };
 
@@ -85,10 +96,10 @@ public:
         pu_collection.resize(node_number);
     }
 
-    void redistribute_initial_data(const Table& R, const Table& S)
+    void redistribute_initial_data(const Table& R, const Table& S, string column_r, string column_s)
     {
-        assert(R.non_partitioned_column.size() == R.partitioned_column.size());
-        assert(S.non_partitioned_column.size() == S.partitioned_column.size());
+        // assert(R.get_column(column_r).size() == R.partitioned_column.size());
+        // assert(S.non_partitioned_column.size() == S.partitioned_column.size());
 
         for (int i = 0; i < pu_collection.size(); i++)
         {
